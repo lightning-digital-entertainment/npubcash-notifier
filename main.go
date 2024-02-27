@@ -66,6 +66,9 @@ func sendNotification(ctx context.Context, relays []*nostr.Relay, notif string) 
 		return
 	}
 	for _, conn := range relays {
+		if !conn.IsConnected() {
+			conn.Connect(ctx)
+		}
 		if err := conn.Publish(ctx, ev); err != nil {
 			fmt.Println(err)
 			continue
