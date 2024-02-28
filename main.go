@@ -28,7 +28,7 @@ type Notification struct {
 	Amount  int8
 }
 
-func sendNotification(ctx context.Context, relays []*nostr.Relay, notif string) {
+func sendNotification(pool *nostr.SimplePool, urls []string, notif string) {
 	var v Notification
 	json.Unmarshal([]byte(notif), &v)
 	var receiver string
@@ -65,20 +65,19 @@ func sendNotification(ctx context.Context, relays []*nostr.Relay, notif string) 
 		fmt.Println("Failed to encrypt message")
 		return
 	}
-	for _, conn := range relays {
-		if !conn.IsConnected() {
-			println("Is not connected... attemting to reconnect...")
-			err := conn.Connect(context.Background())
-			if err != nil {
-				println(err)
-			}
+	ctx, _ := context.WithTimeout(context.Background(), time.Second*10)
+	for _, url := range urls {
+		relay, err := pool.EnsureRelay(url)
+		if err != nil {
+			fmt.Println("Could not ensure relay connection...")
+			continue
 		}
-		if err := conn.Publish(ctx, ev); err != nil {
-			fmt.Println(err)
+		if err := relay.Publish(ctx, ev); err != nil {
+			fmt.Printf("Publishing failed... %v", err)
 			continue
 		}
 
-		fmt.Printf("published to %s\n", conn.URL)
+		fmt.Printf("published to %s\n", relay.URL)
 	}
 }
 
@@ -95,11 +94,11 @@ func setupRelays(urls []string) []*nostr.Relay {
 	return result
 }
 
-func closeConnection(connections []*nostr.Relay) {
-	for _, conn := range connections {
-		err := conn.Close()
-		if err != nil {
-			fmt.Printf("Failed to close connection: %s", conn.URL)
+func closeConnection(pool *nostr.SimplePool, urls []string) {
+	for _, url := range urls {
+		relay, ok := pool.Relays.Load(url)
+		if ok {
+			relay.Close()
 		}
 	}
 }
@@ -114,8 +113,8 @@ func main() {
 	}
 
 	relays := []string{"wss://relay.damus.io"}
-	connections := setupRelays(relays)
-	defer closeConnection(connections)
+	pool := nostr.NewSimplePool(context.Background())
+	defer closeConnection(pool, relays)
 
 	minReconn := 10 * time.Second
 	maxReconn := time.Minute
@@ -132,7 +131,6 @@ func main() {
 	}
 	for {
 		notification := <-listener.Notify
-		ctx, _ := context.WithTimeout(context.Background(), time.Second*10)
-		go sendNotification(ctx, connections, notification.Extra)
+		go sendNotification(pool, relays, notification.Extra)
 	}
 }
