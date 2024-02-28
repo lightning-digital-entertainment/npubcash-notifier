@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"slices"
 	"time"
 
 	"github.com/lib/pq"
@@ -20,7 +19,7 @@ var (
 	pk string
 )
 
-var testers = []string{"ddf03aca85ade039e6742d5bef3df352df199d0d31e22b9858e7eda85cb3bbbe", "0e8c41eb946657188ea6f2aac36c25e393fff4d4149a83679220d66595ff0faa", "d3d74124ddfb5bdc61b8f18d17c3335bbb4f8c71182a35ee27314a49a4eb7b1d", "57324d9d19581e6b630368ca179015c80f970bd75eb236728ebc49738f81ad8d"}
+var relays = []string{"wss://relay.damus.io", "wss://nos.lol", "wss://relay.current.fyi", "wss://nostr-verified.wellorder.net", "wss://nostr.mom"}
 
 type Notification struct {
 	Is_npub bool
@@ -41,9 +40,6 @@ func sendNotification(pool *nostr.SimplePool, urls []string, notif string) {
 		}
 	} else {
 		receiver = v.Pubkey
-	}
-	if !slices.Contains(testers, receiver) {
-		return
 	}
 	key, err := nip04.ComputeSharedSecret(receiver, sk)
 	if err != nil {
@@ -76,8 +72,6 @@ func sendNotification(pool *nostr.SimplePool, urls []string, notif string) {
 			fmt.Printf("Publishing failed... %v", err)
 			continue
 		}
-
-		fmt.Printf("published to %s\n", relay.URL)
 	}
 }
 
@@ -112,7 +106,6 @@ func main() {
 		log.Fatal("Could not create service: No SK/PK available or invalid")
 	}
 
-	relays := []string{"wss://relay.damus.io"}
 	pool := nostr.NewSimplePool(context.Background())
 	defer closeConnection(pool, relays)
 
