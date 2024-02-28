@@ -67,7 +67,11 @@ func sendNotification(ctx context.Context, relays []*nostr.Relay, notif string) 
 	}
 	for _, conn := range relays {
 		if !conn.IsConnected() {
-			conn.Connect(ctx)
+			println("Is not connected... attemting to reconnect...")
+			err := conn.Connect(context.Background())
+			if err != nil {
+				println(err)
+			}
 		}
 		if err := conn.Publish(ctx, ev); err != nil {
 			fmt.Println(err)
