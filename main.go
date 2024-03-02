@@ -24,7 +24,7 @@ var relays = []string{"wss://relay.damus.io", "wss://nos.lol", "wss://relay.curr
 type Notification struct {
 	Is_npub bool
 	Pubkey  string
-	Amount  int8
+	Amount  int64
 }
 
 func sendNotification(pool *nostr.SimplePool, urls []string, notif string) {
